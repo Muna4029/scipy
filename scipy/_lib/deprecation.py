@@ -67,15 +67,27 @@ def _sub_module_deprecation(*, sub_package, module, private_modules, all,
 
     warnings.warn(message, category=DeprecationWarning, stacklevel=3)
 
-    for module in private_modules:
-        try:
-            return getattr(import_module(f"scipy.{sub_package}.{module}"), attribute)
-        except AttributeError as e:
-            # still raise an error if the attribute isn't in any of the expected
-            # private modules
-            if module == private_modules[-1]:
-                raise e
-            continue
+    # If attr is None, try to get it from private_modules
+    if attr is None:
+        for private_mod in private_modules:
+            try:
+                attr = getattr(import_module(f"scipy.{sub_package}.{private_mod}"), attribute)
+                if attr is not None:
+                    return attr
+            except AttributeError:
+                # Attribute not in this private module, try the next one
+                continue
+        
+        # Attribute not found in any private module either
+        # Raise a more informative error
+        raise AttributeError(
+            f"`scipy.{sub_package}.{module}` has no attribute `{attribute}`. "
+            f"The attribute was previously listed in the deprecated module's "
+            f"`__all__` but is not available in the expected location. "
+            f"Please import `{attribute}` from `scipy.{sub_package}` instead."
+        )
+    
+    return attr
     
 
 def _deprecated(msg, stacklevel=2):
