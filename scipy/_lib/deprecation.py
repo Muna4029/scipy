@@ -67,6 +67,13 @@ def _sub_module_deprecation(*, sub_package, module, private_modules, all,
 
     warnings.warn(message, category=DeprecationWarning, stacklevel=3)
 
+    # If the attribute exists in the corrected import location, return it
+    # immediately after warning. Previously, the function would always try
+    # the private_modules even when attr was present, leading to AttributeError
+    # if private modules did not expose the attribute.
+    if attr is not None:
+        return attr
+
     for module in private_modules:
         try:
             return getattr(import_module(f"scipy.{sub_package}.{module}"), attribute)
